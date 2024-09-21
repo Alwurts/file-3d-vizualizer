@@ -1,10 +1,7 @@
-function App() {
+import Scene from "./components/Scene";
 
-  return (
-    <div>
-      <h1>Hello World</h1>
-    </div>
-  )
+function App() {
+	return <Scene />;
 }
 
-export default App
+export default App;
