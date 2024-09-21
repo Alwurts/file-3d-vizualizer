@@ -1,7 +1,8 @@
-import { app, BrowserWindow } from "electron";
+import { ipcMain, app, BrowserWindow } from "electron";
 import { createRequire } from "node:module";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
+import fs from "node:fs/promises";
 createRequire(import.meta.url);
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 process.env.APP_ROOT = path.join(__dirname, "..");
@@ -26,6 +27,44 @@ function createWindow() {
     win.loadFile(path.join(RENDERER_DIST, "index.html"));
   }
 }
+async function getFolderContent(folderPath) {
+  const entries = await fs.readdir(folderPath, { withFileTypes: true });
+  const items = await Promise.all(
+    entries.map(async (entry) => {
+      const fullPath = path.join(folderPath, entry.name);
+      const stats = await fs.stat(fullPath);
+      const baseItem = {
+        name: entry.name,
+        path: fullPath,
+        modifiedAt: stats.mtime
+      };
+      if (entry.isDirectory()) {
+        const folderEntries = await fs.readdir(fullPath);
+        return {
+          ...baseItem,
+          type: "folder",
+          itemCount: folderEntries.length
+        };
+      } else {
+        return {
+          ...baseItem,
+          type: "file",
+          size: stats.size,
+          extension: path.extname(entry.name).slice(1)
+        };
+      }
+    })
+  );
+  return { items };
+}
+ipcMain.handle("get-folder-content", async (_, folderPath) => {
+  try {
+    return await getFolderContent(folderPath);
+  } catch (error) {
+    console.error("Error getting folder content:", error);
+    throw error;
+  }
+});
 app.on("window-all-closed", () => {
   if (process.platform !== "darwin") {
     app.quit();

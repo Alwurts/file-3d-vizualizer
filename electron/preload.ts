@@ -1,7 +1,8 @@
 import { ipcRenderer, contextBridge } from 'electron'
+import type { FolderContent } from '../src/types/fileSystem'
 
 // --------- Expose some API to the Renderer process ---------
-contextBridge.exposeInMainWorld('ipcRenderer', {
+contextBridge.exposeInMainWorld('electronAPI', {
   on(...args: Parameters<typeof ipcRenderer.on>) {
     const [channel, listener] = args
     return ipcRenderer.on(channel, (event, ...args) => listener(event, ...args))
@@ -18,7 +19,5 @@ contextBridge.exposeInMainWorld('ipcRenderer', {
     const [channel, ...omit] = args
     return ipcRenderer.invoke(channel, ...omit)
   },
-
-  // You can expose other APTs you need here.
-  // ...
+  getFolderContent: (folderPath: string): Promise<FolderContent> => ipcRenderer.invoke('get-folder-content', folderPath),
 })

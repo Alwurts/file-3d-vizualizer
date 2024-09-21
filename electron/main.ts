@@ -1,7 +1,9 @@
-import { app, BrowserWindow } from 'electron'
+import { app, BrowserWindow, ipcMain } from 'electron'
 import { createRequire } from 'node:module'
 import { fileURLToPath } from 'node:url'
 import path from 'node:path'
+import fs from 'node:fs/promises'
+import type { FileSystemItem, FolderContent } from '../src/types/fileSystem'
 
 const require = createRequire(import.meta.url)
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
@@ -46,6 +48,50 @@ function createWindow() {
     win.loadFile(path.join(RENDERER_DIST, 'index.html'))
   }
 }
+
+// Add this function to get folder content
+async function getFolderContent(folderPath: string): Promise<FolderContent> {
+  const entries = await fs.readdir(folderPath, { withFileTypes: true });
+  const items: FileSystemItem[] = await Promise.all(
+    entries.map(async (entry) => {
+      const fullPath = path.join(folderPath, entry.name);
+      const stats = await fs.stat(fullPath);
+      const baseItem = {
+        name: entry.name,
+        path: fullPath,
+        modifiedAt: stats.mtime,
+      };
+
+      if (entry.isDirectory()) {
+        const folderEntries = await fs.readdir(fullPath);
+        return {
+          ...baseItem,
+          type: 'folder' as const,
+          itemCount: folderEntries.length,
+        };
+      } else {
+        return {
+          ...baseItem,
+          type: 'file' as const,
+          size: stats.size,
+          extension: path.extname(entry.name).slice(1),
+        };
+      }
+    })
+  );
+
+  return { items };
+}
+
+// Add this IPC handler
+ipcMain.handle('get-folder-content', async (_, folderPath: string) => {
+  try {
+    return await getFolderContent(folderPath);
+  } catch (error) {
+    console.error('Error getting folder content:', error);
+    throw error;
+  }
+});
 
 // Quit when all windows are closed, except on macOS. There, it's common
 // for applications and their menu bar to stay active until the user quits
