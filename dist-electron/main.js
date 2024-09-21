@@ -75,6 +75,9 @@ ipcMain.handle("select-folder", async () => {
     return result.filePaths[0];
   }
 });
+ipcMain.handle("get-parent-directory", (_, currentPath) => {
+  return path.dirname(currentPath);
+});
 app.on("window-all-closed", () => {
   if (process.platform !== "darwin") {
     app.quit();

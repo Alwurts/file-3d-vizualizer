@@ -3,24 +3,16 @@ import type { FolderContent, FileSystemItem } from '../types/fileSystem';
 import Scene from './Scene';
 import WelcomeScene from './WelcomeScene';
 
-declare global {
-  interface Window {
-    electronAPI: {
-      getFolderContent: (folderPath: string) => Promise<FolderContent>;
-      selectFolder: () => Promise<string | null>;
-    };
-  }
-}
-
 const FolderExplorer: React.FC = () => {
   const [currentPath, setCurrentPath] = useState<string | null>(null);
   const [folderContent, setFolderContent] = useState<FolderContent | null>(null);
-  const [pathHistory, setPathHistory] = useState<string[]>([]);
+  const [canGoBack, setCanGoBack] = useState(false);
 
   useEffect(() => {
     if (currentPath) {
       console.log('Loading folder content:', currentPath);
       loadFolderContent(currentPath);
+      checkCanGoBack(currentPath);
     }
   }, [currentPath]);
 
@@ -34,10 +26,14 @@ const FolderExplorer: React.FC = () => {
     }
   };
 
+  const checkCanGoBack = async (currentPath: string) => {
+    const parentPath = await window.electronAPI.getParentDirectory(currentPath);
+    setCanGoBack(parentPath !== currentPath);
+  };
+
   const handleItemClick = (item: FileSystemItem) => {
     console.log('Item clicked:', item);
     if (item.type === 'folder') {
-      setPathHistory(prev => [...prev, currentPath]);
       setCurrentPath(item.path);
     } else {
       console.log('File clicked:', item);
@@ -45,11 +41,12 @@ const FolderExplorer: React.FC = () => {
     }
   };
 
-  const handleGoBack = () => {
-    if (pathHistory.length > 0) {
-      const previousPath = pathHistory[pathHistory.length - 1];
-      setPathHistory(prev => prev.slice(0, -1));
-      setCurrentPath(previousPath);
+  const handleGoBack = async () => {
+    if (currentPath) {
+      const parentPath = await window.electronAPI.getParentDirectory(currentPath);
+      if (parentPath !== currentPath) {
+        setCurrentPath(parentPath);
+      }
     }
   };
 
@@ -58,7 +55,7 @@ const FolderExplorer: React.FC = () => {
       const folderPath = await window.electronAPI.selectFolder();
       if (folderPath) {
         setCurrentPath(folderPath);
-        setPathHistory([]); // Reset path history when selecting a new folder
+        setFolderContent(null); // Reset folder content when selecting a new folder
       }
     } catch (error) {
       console.error('Error selecting folder:', error);
@@ -74,7 +71,7 @@ const FolderExplorer: React.FC = () => {
           folderContent={folderContent} 
           onItemClick={handleItemClick} 
           onGoBack={handleGoBack}
-          canGoBack={pathHistory.length > 0}
+          canGoBack={canGoBack}
           onSelectNewFolder={handleSelectFolder}
         />
       ) : (

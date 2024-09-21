@@ -26,6 +26,7 @@ declare global {
 		electronAPI: {
 			getFolderContent: (folderPath: string) => Promise<FolderContent>;
 			selectFolder: () => Promise<string | null>;
+			getParentDirectory: (currentPath: string) => Promise<string>;
 		};
 	}
 }

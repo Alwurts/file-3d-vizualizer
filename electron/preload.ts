@@ -21,4 +21,5 @@ contextBridge.exposeInMainWorld('electronAPI', {
   },
   getFolderContent: (folderPath: string): Promise<FolderContent> => ipcRenderer.invoke('get-folder-content', folderPath),
   selectFolder: (): Promise<string | null> => ipcRenderer.invoke('select-folder'),
+  getParentDirectory: (currentPath: string): Promise<string> => ipcRenderer.invoke('get-parent-directory', currentPath),
 })

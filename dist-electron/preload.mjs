@@ -18,5 +18,6 @@ electron.contextBridge.exposeInMainWorld("electronAPI", {
     return electron.ipcRenderer.invoke(channel, ...omit);
   },
   getFolderContent: (folderPath) => electron.ipcRenderer.invoke("get-folder-content", folderPath),
-  selectFolder: () => electron.ipcRenderer.invoke("select-folder")
+  selectFolder: () => electron.ipcRenderer.invoke("select-folder"),
+  getParentDirectory: (currentPath) => electron.ipcRenderer.invoke("get-parent-directory", currentPath)
 });
