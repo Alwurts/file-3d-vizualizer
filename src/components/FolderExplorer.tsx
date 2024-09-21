@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import type { FolderContent, FileSystemItem } from '../types/fileSystem';
 import Scene from './Scene';
 
@@ -13,6 +13,7 @@ declare global {
 const FolderExplorer: React.FC = () => {
   const [currentPath, setCurrentPath] = useState<string>('C:\\Users\\aleja\\Development');
   const [folderContent, setFolderContent] = useState<FolderContent | null>(null);
+  const [pathHistory, setPathHistory] = useState<string[]>([]);
 
   useEffect(() => {
     if (currentPath) {
@@ -34,6 +35,7 @@ const FolderExplorer: React.FC = () => {
   const handleItemClick = (item: FileSystemItem) => {
     console.log('Item clicked:', item);
     if (item.type === 'folder') {
+      setPathHistory(prev => [...prev, currentPath]);
       setCurrentPath(item.path);
     } else {
       console.log('File clicked:', item);
@@ -41,10 +43,23 @@ const FolderExplorer: React.FC = () => {
     }
   };
 
+  const handleGoBack = () => {
+    if (pathHistory.length > 0) {
+      const previousPath = pathHistory[pathHistory.length - 1];
+      setPathHistory(prev => prev.slice(0, -1));
+      setCurrentPath(previousPath);
+    }
+  };
+
   return (
     <div style={{ width: '100vw', height: '100vh' }}>
       {folderContent ? (
-        <Scene folderContent={folderContent} onItemClick={handleItemClick} />
+        <Scene 
+          folderContent={folderContent} 
+          onItemClick={handleItemClick} 
+          onGoBack={handleGoBack}
+          canGoBack={pathHistory.length > 0}
+        />
       ) : (
         <div>Loading...</div>
       )}

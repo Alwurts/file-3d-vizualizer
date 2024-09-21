@@ -1,11 +1,15 @@
-import React, { useMemo } from 'react';
-import { Canvas } from '@react-three/fiber';
-import { OrbitControls, Text } from '@react-three/drei';
+import React, { useMemo, useRef, useState } from 'react';
+import { Canvas, useFrame } from '@react-three/fiber';
+import { OrbitControls, Text, Environment, PerspectiveCamera, Sky, Html } from '@react-three/drei';
+import * as THREE from 'three';
 import type { FolderContent, FileSystemItem } from '../types/fileSystem';
+import type { ThreeEvent } from '@react-three/fiber';
 
 interface SceneProps {
   folderContent: FolderContent | null;
   onItemClick: (item: FileSystemItem) => void;
+  onGoBack: () => void;
+  canGoBack: boolean;
 }
 
 const FILE_BASE_HEIGHT = 0.1;
@@ -14,9 +18,10 @@ const ITEM_BASE_SIZE = [0.8, 0.8, 0.8] as const;
 const ITEM_SPACING = 1.2;
 
 const COLORS = {
-  BASE: 'rgb(60, 60, 60)',
-  FOLDER: 'rgb(255, 190, 70)',
-  FILE: 'rgb(100, 180, 255)'
+  BASE: '#2c3e50',
+  FOLDER: '#f39c12',
+  FILE: '#3498db',
+  TEXT: '#000000'
 };
 
 function formatSize(size: number): string {
@@ -53,16 +58,62 @@ function ItemBlock({ item, onClick, position }: { item: FileSystemItem; onClick:
   const color = item.type === 'folder' ? COLORS.FOLDER : COLORS.FILE;
   const metadata = item.type === 'file' ? formatSize(item.size) : `${item.itemCount} items`;
 
+  const meshRef = useRef<THREE.Mesh>(null);
+  const [isHovered, setIsHovered] = useState(false);
+  const [isClicking, setIsClicking] = useState(false);
+  const clickStartPosition = useRef<THREE.Vector2 | null>(null);
+
+  useFrame(() => {
+    if (meshRef.current) {
+      meshRef.current.scale.x = THREE.MathUtils.lerp(meshRef.current.scale.x, isHovered ? 1.1 : 1, 0.1);
+      meshRef.current.scale.y = THREE.MathUtils.lerp(meshRef.current.scale.y, isHovered ? 1.1 : 1, 0.1);
+      meshRef.current.scale.z = THREE.MathUtils.lerp(meshRef.current.scale.z, isHovered ? 1.1 : 1, 0.1);
+    }
+  });
+
+  const handlePointerDown = (event: ThreeEvent<PointerEvent>) => {
+    setIsClicking(true);
+    clickStartPosition.current = new THREE.Vector2(event.clientX, event.clientY);
+  };
+
+  const handlePointerUp = (event: ThreeEvent<PointerEvent>) => {
+    if (isClicking && clickStartPosition.current) {
+      const endPosition = new THREE.Vector2(event.clientX, event.clientY);
+      const distance = clickStartPosition.current.distanceTo(endPosition);
+      
+      if (distance < 5) { // Adjust this threshold as needed
+        onClick();
+      }
+    }
+    setIsClicking(false);
+    clickStartPosition.current = null;
+  };
+
+  const handlePointerLeave = () => {
+    setIsClicking(false);
+    setIsHovered(false);
+    clickStartPosition.current = null;
+  };
+
+  const hoverColor = new THREE.Color(color).multiplyScalar(1.2).getHexString();
+
   return (
     <group position={[x, y + height / 2, z]}>
-      <mesh onClick={onClick}>
+      <mesh 
+        ref={meshRef}
+        onPointerDown={handlePointerDown}
+        onPointerUp={handlePointerUp}
+        onPointerLeave={handlePointerLeave}
+        onPointerEnter={() => setIsHovered(true)}
+        onPointerOut={() => setIsHovered(false)}
+      >
         <boxGeometry args={[ITEM_BASE_SIZE[0], height, ITEM_BASE_SIZE[2]]} />
-        <meshStandardMaterial color={color} />
+        <meshStandardMaterial color={isHovered ? `#${hoverColor}` : color} roughness={0.7} metalness={0.3} />
       </mesh>
       <Text
         position={[0, height / 2 + 0.4, 0]}
         fontSize={0.15}
-        color="white"
+        color={COLORS.TEXT}
         anchorY="bottom"
         anchorX="center"
         maxWidth={ITEM_BASE_SIZE[0] * 0.9}
@@ -74,7 +125,7 @@ function ItemBlock({ item, onClick, position }: { item: FileSystemItem; onClick:
       <Text
         position={[0, height / 2 + 0.2, 0]}
         fontSize={0.1}
-        color="white"
+        color={COLORS.TEXT}
         anchorY="bottom"
         anchorX="center"
         maxWidth={ITEM_BASE_SIZE[0] * 0.9}
@@ -86,7 +137,7 @@ function ItemBlock({ item, onClick, position }: { item: FileSystemItem; onClick:
   );
 }
 
-function FolderContent({ items, onItemClick, position }: { items: FileSystemItem[]; onItemClick: (item: FileSystemItem) => void; position: [number, number, number] }) {
+function FolderContentGroup({ items, onItemClick, position }: { items: FileSystemItem[]; onItemClick: (item: FileSystemItem) => void; position: [number, number, number] }) {
   const gridSize = Math.ceil(Math.sqrt(items.length));
   const baseSize: [number, number, number] = [gridSize * ITEM_SPACING, 0.2, gridSize * ITEM_SPACING];
 
@@ -111,21 +162,69 @@ function FolderContent({ items, onItemClick, position }: { items: FileSystemItem
   );
 }
 
-export default function Scene({ folderContent, onItemClick }: SceneProps) {
+function Background() {
+  return (
+    <Sky 
+      distance={450000} 
+      sunPosition={[0, 1, 0]} 
+      inclination={0} 
+      azimuth={0.25} 
+    />
+  );
+}
+
+function GoBackButton({ onClick, canGoBack }: { onClick: () => void; canGoBack: boolean }) {
+  return (
+    <Html fullscreen>
+      <div style={{
+        position: 'absolute',
+        top: '20px',
+        left: '20px',
+        zIndex: 1000
+      }}>
+        <button 
+          onClick={onClick} 
+          disabled={!canGoBack}
+          style={{
+            padding: '10px 20px',
+            fontSize: '16px',
+            backgroundColor: canGoBack ? '#3498db' : '#bdc3c7',
+            color: 'white',
+            border: 'none',
+            borderRadius: '5px',
+            cursor: canGoBack ? 'pointer' : 'not-allowed'
+          }}
+          type="button"
+        >
+          Go Back
+        </button>
+      </div>
+    </Html>
+  );
+}
+
+export default function Scene({ folderContent, onItemClick, onGoBack, canGoBack }: SceneProps) {
   if (!folderContent) {
     return null;
   }
 
   return (
-    <Canvas camera={{ position: [0, 10, 20], fov: 50 }}>
+    <Canvas>
+      <PerspectiveCamera makeDefault position={[0, 10, 20]} fov={50} />
+      <Background />
       <ambientLight intensity={0.5} />
-      <pointLight position={[10, 10, 10]} />
-      <FolderContent
+      <pointLight position={[10, 10, 10]} intensity={0.5} />
+      <pointLight position={[-10, -10, -10]} intensity={0.3} color="#ff8080" />
+      <directionalLight position={[-5, 5, 5]} intensity={0.5} castShadow />
+      <spotLight position={[0, 10, 0]} angle={0.3} penumbra={1} intensity={0.8} castShadow />
+      <FolderContentGroup
         items={folderContent.items}
         onItemClick={onItemClick}
         position={[0, 0, 0]}
       />
-      <OrbitControls />
+      <GoBackButton onClick={onGoBack} canGoBack={canGoBack} />
+      <OrbitControls enableDamping dampingFactor={0.05} />
+      <Environment preset="sunset" />
     </Canvas>
   );
 }

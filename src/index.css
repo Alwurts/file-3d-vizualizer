@@ -7,3 +7,11 @@ html, body, #root {
 #root {
   background-color: #555555;
 }
+
+canvas {
+  cursor: default;
+}
+
+canvas:hover {
+  cursor: pointer;
+}
