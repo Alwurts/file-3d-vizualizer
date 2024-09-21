@@ -20,3 +20,20 @@ export type FileSystemItem = FileItem | FolderItem;
 export interface FolderContent {
 	items: FileSystemItem[];
 }
+
+declare global {
+	interface Window {
+		electronAPI: {
+			getFolderContent: (folderPath: string) => Promise<FolderContent>;
+			selectFolder: () => Promise<string | null>;
+		};
+	}
+}
+
+export interface SceneProps {
+	folderContent: FolderContent | null;
+	onItemClick: (item: FileSystemItem) => void;
+	onGoBack: () => void;
+	canGoBack: boolean;
+	onSelectNewFolder: () => void;
+}

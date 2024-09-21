@@ -1,4 +1,4 @@
-import { ipcMain, app, BrowserWindow } from "electron";
+import { ipcMain, dialog, app, BrowserWindow } from "electron";
 import { createRequire } from "node:module";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
@@ -63,6 +63,16 @@ ipcMain.handle("get-folder-content", async (_, folderPath) => {
   } catch (error) {
     console.error("Error getting folder content:", error);
     throw error;
+  }
+});
+ipcMain.handle("select-folder", async () => {
+  const result = await dialog.showOpenDialog({
+    properties: ["openDirectory"]
+  });
+  if (result.canceled) {
+    return null;
+  } else {
+    return result.filePaths[0];
   }
 });
 app.on("window-all-closed", () => {

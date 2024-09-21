@@ -10,6 +10,7 @@ interface SceneProps {
   onItemClick: (item: FileSystemItem) => void;
   onGoBack: () => void;
   canGoBack: boolean;
+  onSelectNewFolder: () => void;
 }
 
 const FILE_BASE_HEIGHT = 0.1;
@@ -37,12 +38,37 @@ function formatSize(size: number): string {
   return `${scaledSize.toFixed(1)} ${units[unitIndex]}`;
 }
 
-function FolderBase({ size, position }: { size: [number, number, number], position: [number, number, number] }) {
+function formatFolderSize(items: FileSystemItem[]): string {
+  const totalSize = items.reduce((sum, item) => {
+    if (item.type === 'file') {
+      return sum + item.size;
+    }
+    return sum;
+  }, 0);
+  return formatSize(totalSize);
+}
+
+function FolderBase({ size, position, items }: { size: [number, number, number], position: [number, number, number], items: FileSystemItem[] }) {
+  const [width, height, depth] = size;
+  const folderSize = formatFolderSize(items);
+
   return (
-    <mesh position={position}>
-      <boxGeometry args={size} />
-      <meshStandardMaterial color={COLORS.BASE} />
-    </mesh>
+    <group position={position}>
+      <mesh>
+        <boxGeometry args={size} />
+        <meshStandardMaterial color={COLORS.BASE} />
+      </mesh>
+      <Text
+        position={[0, height / 2 + 0.01, depth / 2 - 0.1]}
+        fontSize={0.2}
+        color="#ffffff"
+        anchorX="center"
+        anchorY="bottom"
+        rotation={[-Math.PI / 2, 0, 0]}
+      >
+        {folderSize}
+      </Text>
+    </group>
   );
 }
 
@@ -143,7 +169,7 @@ function FolderContentGroup({ items, onItemClick, position }: { items: FileSyste
 
   return (
     <group position={position}>
-      <FolderBase size={baseSize} position={[0, -0.1, 0]} />
+      <FolderBase size={baseSize} position={[0, -0.1, 0]} items={items} />
       {items.map((item, index) => {
         const row = Math.floor(index / gridSize);
         const col = index % gridSize;
@@ -175,56 +201,84 @@ function Background() {
 
 function GoBackButton({ onClick, canGoBack }: { onClick: () => void; canGoBack: boolean }) {
   return (
-    <Html fullscreen>
-      <div style={{
-        position: 'absolute',
-        top: '20px',
-        left: '20px',
-        zIndex: 1000
-      }}>
-        <button 
-          onClick={onClick} 
-          disabled={!canGoBack}
-          style={{
-            padding: '10px 20px',
-            fontSize: '16px',
-            backgroundColor: canGoBack ? '#3498db' : '#bdc3c7',
-            color: 'white',
-            border: 'none',
-            borderRadius: '5px',
-            cursor: canGoBack ? 'pointer' : 'not-allowed'
-          }}
-          type="button"
-        >
-          Go Back
-        </button>
-      </div>
-    </Html>
+    <div style={{
+      position: 'fixed',
+      top: '20px',
+      left: '20px',
+      zIndex: 1000
+    }}>
+      <button 
+        onClick={onClick} 
+        disabled={!canGoBack}
+        style={{
+          padding: '10px 20px',
+          fontSize: '16px',
+          backgroundColor: canGoBack ? '#3498db' : '#bdc3c7',
+          color: 'white',
+          border: 'none',
+          borderRadius: '5px',
+          cursor: canGoBack ? 'pointer' : 'not-allowed'
+        }}
+        type="button"
+      >
+        Go Back
+      </button>
+    </div>
   );
 }
 
-export default function Scene({ folderContent, onItemClick, onGoBack, canGoBack }: SceneProps) {
+function SelectNewFolderButton({ onClick }: { onClick: () => void }) {
+  return (
+    <div style={{
+      position: 'fixed',
+      top: '20px',
+      right: '20px',
+      zIndex: 1000
+    }}>
+      <button 
+        onClick={onClick}
+        style={{
+          padding: '10px 20px',
+          fontSize: '16px',
+          backgroundColor: '#2ecc71',
+          color: 'white',
+          border: 'none',
+          borderRadius: '5px',
+          cursor: 'pointer'
+        }}
+        type="button"
+      >
+        Select New Folder
+      </button>
+    </div>
+  );
+}
+
+export default function Scene({ folderContent, onItemClick, onGoBack, canGoBack, onSelectNewFolder }: SceneProps) {
   if (!folderContent) {
     return null;
   }
 
   return (
-    <Canvas>
-      <PerspectiveCamera makeDefault position={[0, 10, 20]} fov={50} />
-      <Background />
-      <ambientLight intensity={0.5} />
-      <pointLight position={[10, 10, 10]} intensity={0.5} />
-      <pointLight position={[-10, -10, -10]} intensity={0.3} color="#ff8080" />
-      <directionalLight position={[-5, 5, 5]} intensity={0.5} castShadow />
-      <spotLight position={[0, 10, 0]} angle={0.3} penumbra={1} intensity={0.8} castShadow />
-      <FolderContentGroup
-        items={folderContent.items}
-        onItemClick={onItemClick}
-        position={[0, 0, 0]}
-      />
+    <>
+      <Canvas>
+        <PerspectiveCamera makeDefault position={[0, 10, 20]} fov={50} />
+        <Background />
+        <ambientLight intensity={0.5} />
+        <pointLight position={[10, 10, 10]} intensity={0.5} />
+        <pointLight position={[-10, -10, -10]} intensity={0.3} color="#ff8080" />
+        <directionalLight position={[-5, 5, 5]} intensity={0.5} castShadow />
+        <spotLight position={[0, 10, 0]} angle={0.3} penumbra={1} intensity={0.8} castShadow />
+        <FolderContentGroup
+          items={folderContent.items}
+          onItemClick={onItemClick}
+          position={[0, 0, 0]}
+        />
+        <OrbitControls enableDamping dampingFactor={0.05} />
+        <Environment preset="sunset" />
+      </Canvas>
       <GoBackButton onClick={onGoBack} canGoBack={canGoBack} />
-      <OrbitControls enableDamping dampingFactor={0.05} />
-      <Environment preset="sunset" />
-    </Canvas>
+      <SelectNewFolderButton onClick={onSelectNewFolder} />
+    </>
   );
 }

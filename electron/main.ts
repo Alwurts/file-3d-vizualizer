@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url'
 import path from 'node:path'
 import fs from 'node:fs/promises'
 import type { FileSystemItem, FolderContent } from '../src/types/fileSystem'
+import { dialog } from 'electron'
 
 const require = createRequire(import.meta.url)
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
@@ -90,6 +91,19 @@ ipcMain.handle('get-folder-content', async (_, folderPath: string) => {
   } catch (error) {
     console.error('Error getting folder content:', error);
     throw error;
+  }
+});
+
+// Add this IPC handler
+ipcMain.handle('select-folder', async () => {
+  const result = await dialog.showOpenDialog({
+    properties: ['openDirectory']
+  });
+  
+  if (result.canceled) {
+    return null;
+  } else {
+    return result.filePaths[0];
   }
 });
 
