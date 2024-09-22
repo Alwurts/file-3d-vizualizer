@@ -49,7 +49,7 @@ function WelcomeText() {
     <group position={[0, 3, 0]}>
       <Text
         fontSize={0.8}
-        color="#ffffff"
+        color="#000"
         anchorX="center"
         anchorY="middle"
         // Remove the font property for now
@@ -60,13 +60,13 @@ function WelcomeText() {
       <Text
         position={[0, -1, 0]}
         fontSize={0.4}
-        color="#cccccc"
+        color="#000"
         anchorX="center"
         anchorY="middle"
         // Remove the font property for now
         // font="/fonts/Roboto-Regular.ttf"
       >
-        Click the glowing sphere to select a folder
+        Click the sphere to select a folder
       </Text>
     </group>
   );

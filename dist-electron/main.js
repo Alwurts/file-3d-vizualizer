@@ -40,10 +40,17 @@ async function getFolderContent(folderPath) {
       };
       if (entry.isDirectory()) {
         const folderEntries = await fs.readdir(fullPath);
+        let size = 0;
+        for (const subEntry of folderEntries) {
+          const subPath = path.join(fullPath, subEntry);
+          const subStats = await fs.stat(subPath);
+          size += subStats.size;
+        }
         return {
           ...baseItem,
           type: "folder",
-          itemCount: folderEntries.length
+          itemCount: folderEntries.length,
+          size
         };
       } else {
         return {

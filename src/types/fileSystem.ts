@@ -13,6 +13,7 @@ export interface FileItem extends BaseItem {
 export interface FolderItem extends BaseItem {
 	type: 'folder';
 	itemCount: number;
+	size: number; // Add this line
 }
 
 export type FileSystemItem = FileItem | FolderItem;

@@ -50,7 +50,7 @@ function createWindow() {
   }
 }
 
-// Add this function to get folder content
+
 async function getFolderContent(folderPath: string): Promise<FolderContent> {
   const entries = await fs.readdir(folderPath, { withFileTypes: true });
   const items: FileSystemItem[] = await Promise.all(
@@ -65,10 +65,17 @@ async function getFolderContent(folderPath: string): Promise<FolderContent> {
 
       if (entry.isDirectory()) {
         const folderEntries = await fs.readdir(fullPath);
+        let size = 0;
+        for (const subEntry of folderEntries) {
+          const subPath = path.join(fullPath, subEntry);
+          const subStats = await fs.stat(subPath);
+          size += subStats.size;
+        }
         return {
           ...baseItem,
           type: 'folder' as const,
           itemCount: folderEntries.length,
+          size: size,
         };
       } else {
         return {
